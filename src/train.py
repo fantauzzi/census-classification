@@ -63,7 +63,7 @@ def train_and_save(train_val_pool: Pool, filename: str, file_format: str = 'cbm'
     return best_model
 
 
-def test_model(file_name: str, test_pool: Pool, y_test: list, metrics: list[str]) -> dict[str,float]:
+def test_model(file_name: str, test_pool: Pool, y_test: list, metrics: list[str]) -> dict[str, float]:
     logging.info(
         f'Evaluating model saved in {file_name} against a test set with {len(y_test)} samples ({sum(y_test)} positive).')
     model = CatBoostClassifier()
@@ -79,9 +79,59 @@ def test_model(file_name: str, test_pool: Pool, y_test: list, metrics: list[str]
     return metrics
 
 
+def test_given_slice(model: CatBoostClassifier,
+                     X_test: pd.DataFrame,
+                     y_test: list,
+                     var_name: str, category: str,
+                     metrics: list[str]) -> dict[str, float]:
+    X_slice = X_test[X_test[var_name] == category]
+    y_slice = y_test[X_test[var_name] == category]
+    test_pool = Pool(data=X_slice, label=y_slice, cat_features=categorical_idx)
+    logging.info(
+        f'Slice for category "{category}" contains {len(X_slice)} samples ({sum(y_slice)} positive)')
+    slice_metrics = model.eval_metrics(data=test_pool,
+                                       metrics=metrics,
+                                       ntree_start=model.tree_count_ - 1)
+    logging.info(f'   Metrics for the slice: {slice_metrics}')
+    return slice_metrics
+
+
+def test_model_slices(file_name: str, X_test: pd.DataFrame, y_test: list, metrics: list[str], var_name: str) -> \
+        dict[str, dict[str, float]]:
+    # Only implemented for categorical variables
+    assert pd.api.types.is_string_dtype(X_test[var_name]), 'Variable for slice testing must be categorical (string)'
+
+    model = CatBoostClassifier()
+    model.load_model(file_name)
+
+    # Collect all possible values for the given variable
+    categories = pd.unique(X_test[var_name])
+    logging.info(f'Performing model slice testing for variable {var_name} with {len(categories)} categories:')
+    for category in categories:
+        logging.info(f'   "{category}"')
+
+    # TODO dead code, eventually remove if not used
+    # X_slices = {category: X_test[X_test[var_name] == category] for category in categories}
+    # y_slices = {category: y_test[X_test[var_name] == category] for category in categories}
+    # test_Pools = {category: Pool(data=X_slices[category], label=y_slices[category], cat_features=categorical_idx)
+    #              for category in categories}
+
+    slices_metrics = {}
+    for category in categories:
+        slices_metrics[category] = test_given_slice(model=model,
+                                                    X_test=X_test,
+                                                    y_test=y_test,
+                                                    var_name=var_name,
+                                                    category=category,
+                                                    metrics=metrics)
+
+    return slices_metrics
+
+
 def main():
     if not Path(cleaned_datafile).exists():
-        logging.info(f'Pre-processed dataset {cleaned_datafile} not found. Going to make it now from raw dataset {raw_datafile}')
+        logging.info(
+            f'Pre-processed dataset {cleaned_datafile} not found. Going to make it now from raw dataset {raw_datafile}')
         pre_process(raw_datafile, cleaned_datafile)
 
     logging.info(f'Loading pre-processed dataset {cleaned_datafile}')
@@ -110,8 +160,15 @@ def main():
                            file_format='cbm')
 
     # Test the model
+    metrics_name = ['Logloss', 'AUC', 'F1', 'Recall', 'Precision', 'Accuracy']
     test_pool = Pool(data=X_test, label=y_test, cat_features=categorical_idx)
-    metrics = test_model(saved_model, test_pool, y_test, ['Logloss', 'AUC', 'F1', 'Recall', 'Precision', 'Accuracy'])
+    metrics_value = test_model(saved_model, test_pool, y_test, metrics_name)
+
+    test_model_slices(file_name=saved_model,
+                      X_test=X_test,
+                      y_test=y_test,
+                      metrics=metrics_name,
+                      var_name='education')
 
 
 if __name__ == '__main__':
