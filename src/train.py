@@ -128,6 +128,20 @@ def test_model_slices(file_name: str, X_test: pd.DataFrame, y_test: list, metric
     return slices_metrics
 
 
+def predict_proba(df: pd.DataFrame) -> np.ndarray:
+    logging.info(
+        f'Making prediction for batch of {len(df)} samples.')
+    if predict_proba.model is None:
+        logging.info(f'Loading trained model {saved_model}')
+        predict_proba.model = CatBoostClassifier()
+        predict_proba.model.load_model(saved_model)
+    y_prob = predict_proba.model.predict_proba(df, verbose=True)
+    return y_prob
+
+
+predict_proba.model = None
+
+
 def main():
     if not Path(cleaned_datafile).exists():
         logging.info(
