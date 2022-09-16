@@ -1,9 +1,9 @@
+from os import getcwd
 import logging
 import pandas as pd
 import numpy as np
 from pathlib import Path
 from sklearn.model_selection import train_test_split
-# from sklearn.metrics import log_loss
 from catboost import Pool, cv, CatBoostClassifier
 from census_preprocess import pre_process, str_columns
 
@@ -79,11 +79,11 @@ def eval_model(file_name: str, test_pool: Pool, y_test: list, metrics: list[str]
     return metrics
 
 
-def test_given_slice(model: CatBoostClassifier,
-                     X_test: pd.DataFrame,
-                     y_test: list,
-                     var_name: str, category: str,
-                     metrics: list[str]) -> dict[str, float]:
+def validate_given_slice(model: CatBoostClassifier,
+                         X_test: pd.DataFrame,
+                         y_test: list,
+                         var_name: str, category: str,
+                         metrics: list[str]) -> dict[str, float]:
     X_slice = X_test[X_test[var_name] == category]
     y_slice = y_test[X_test[var_name] == category]
     test_pool = Pool(data=X_slice, label=y_slice, cat_features=categorical_idx)
@@ -96,7 +96,7 @@ def test_given_slice(model: CatBoostClassifier,
     return slice_metrics
 
 
-def test_model_slices(file_name: str, X_test: pd.DataFrame, y_test: list, metrics: list[str], var_name: str) -> \
+def validate_model_slice(file_name: str, X_test: pd.DataFrame, y_test: list, metrics: list[str], var_name: str) -> \
         dict[str, dict[str, float]]:
     # Only implemented for categorical variables
     assert pd.api.types.is_string_dtype(X_test[var_name]), 'Variable for slice testing must be categorical (string)'
@@ -118,17 +118,18 @@ def test_model_slices(file_name: str, X_test: pd.DataFrame, y_test: list, metric
 
     slices_metrics = {}
     for category in categories:
-        slices_metrics[category] = test_given_slice(model=model,
-                                                    X_test=X_test,
-                                                    y_test=y_test,
-                                                    var_name=var_name,
-                                                    category=category,
-                                                    metrics=metrics)
+        slices_metrics[category] = validate_given_slice(model=model,
+                                                        X_test=X_test,
+                                                        y_test=y_test,
+                                                        var_name=var_name,
+                                                        category=category,
+                                                        metrics=metrics)
 
     return slices_metrics
 
 
 def predict_proba(df: pd.DataFrame) -> np.ndarray:
+    logging.info(f'Working directory for predic_proba() is {getcwd()}')
     logging.info(
         f'Making prediction for batch of {len(df)} samples.')
     if predict_proba.model is None:
@@ -143,6 +144,7 @@ predict_proba.model = None
 
 
 def main():
+    logging.info(f'Working directory is {getcwd()}')
     if not Path(cleaned_datafile).exists():
         logging.info(
             f'Pre-processed dataset {cleaned_datafile} not found. Going to make it now from raw dataset {raw_datafile}')
@@ -178,11 +180,11 @@ def main():
     test_pool = Pool(data=X_test, label=y_test, cat_features=categorical_idx)
     metrics_value = eval_model(saved_model, test_pool, y_test, metrics_name)
 
-    test_model_slices(file_name=saved_model,
-                      X_test=X_test,
-                      y_test=y_test,
-                      metrics=metrics_name,
-                      var_name='education')
+    validate_model_slice(file_name=saved_model,
+                         X_test=X_test,
+                         y_test=y_test,
+                         metrics=metrics_name,
+                         var_name='education')
 
 
 if __name__ == '__main__':

@@ -1,3 +1,4 @@
+from os import getcwd
 import logging
 import pandas as pd
 from pathlib import Path
@@ -61,6 +62,7 @@ def pre_process(raw_datafile: str, cleaned_datafile: str):
 
 
 def main():
+    logging.info(f'Working directory is {getcwd()}')
     raw_datafile = '../data/census.csv'
     cleaned_datafile = '../data/census_cleaned.csv'
     pre_process(raw_datafile, cleaned_datafile)

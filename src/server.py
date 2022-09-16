@@ -58,9 +58,9 @@ async def perform_inference(sample: Sample) -> dict[str, float]:
     # Some field names defined in the BaseModel have underscores, but the corresponding column names (in the dataset)
     # have hyphens instead, therefore replace underscores with hyphens in the column names.
     sample = {key.replace('_', '-') if type(key) == str else key: value for key, value in sample.items()}
-    logging.info(f'Dict is\n{sample}')
+    # logging.info(f'Dict is\n{sample}')
     sample_df = pd.DataFrame(sample, index=[0])
-    logging.info(f'Dataframe is\n{sample_df}')
+    # logging.info(f'Dataframe is\n{sample_df}')
     y_pred = predict_proba(sample_df)[0][1]
     result = {'predicted_probability >50K': y_pred}
     logging.info(f'result is\n{result}')
