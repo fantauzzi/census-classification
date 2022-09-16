@@ -44,7 +44,7 @@ async def home() -> dict[str, str]:
 
 # age	workclass	fnlgt	education	education-num	marital-status	occupation	relationship	race	sex	capital-gain	capital-loss	hours-per-week	native-country	salary
 
-@app.post('/inference')
+@app.post('/inference/')
 async def perform_inference(sample: Sample) -> dict[str, float]:
     """
     Performs an inference with the trained model for a given sample and returns the result.
