@@ -35,9 +35,9 @@ class Sample(BaseModel):
 @app.get('/')
 async def home() -> dict[str, str]:
     """
-    The home page.
-    :return:
-    :rtype:
+    The root of the API.
+    :return: A greeting message.
+    :rtype: dict[str, str]
     """
     return {'message': 'Inference for census classification'}
 
