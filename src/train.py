@@ -63,7 +63,7 @@ def train_and_save(train_val_pool: Pool, filename: str, file_format: str = 'cbm'
     return best_model
 
 
-def test_model(file_name: str, test_pool: Pool, y_test: list, metrics: list[str]) -> dict[str, float]:
+def eval_model(file_name: str, test_pool: Pool, y_test: list, metrics: list[str]) -> dict[str, float]:
     logging.info(
         f'Evaluating model saved in {file_name} against a test set with {len(y_test)} samples ({sum(y_test)} positive).')
     model = CatBoostClassifier()
@@ -176,7 +176,7 @@ def main():
     # Test the model
     metrics_name = ['Logloss', 'AUC', 'F1', 'Recall', 'Precision', 'Accuracy']
     test_pool = Pool(data=X_test, label=y_test, cat_features=categorical_idx)
-    metrics_value = test_model(saved_model, test_pool, y_test, metrics_name)
+    metrics_value = eval_model(saved_model, test_pool, y_test, metrics_name)
 
     test_model_slices(file_name=saved_model,
                       X_test=X_test,
