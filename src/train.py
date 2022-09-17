@@ -50,7 +50,7 @@ def train_and_save(train_val_pool: Pool,
     logging.info(f'Re-training the model for {best_iter + 1} iterations on the whole training/validation dataset')
 
     classifier_params['iterations'] = best_iter + 1
-    best_model = CatBoostClassifier(**classifier_params)  #verbose=True,
+    best_model = CatBoostClassifier(**classifier_params)  # verbose=True,
     best_model.fit(train_val_pool)
     # verbose=True)
 
@@ -140,7 +140,7 @@ predict_proba.model = None
 
 
 @hydra.main(version_base=None, config_path=".", config_name="params.yaml")
-def main(params: DictConfig):
+def main(params: DictConfig) -> None:
     logging.info(f'Working directory is {getcwd()}')
 
     seed = 42

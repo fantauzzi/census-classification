@@ -2,9 +2,12 @@ from os import getcwd
 import logging
 import pandas as pd
 from pathlib import Path
+import hydra
+from omegaconf import DictConfig, OmegaConf
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(message)s")
 logger = logging.getLogger()
+
 
 def str_columns(df: pd.DataFrame) -> list[str]:
     """
@@ -17,6 +20,7 @@ def str_columns(df: pd.DataFrame) -> list[str]:
     """
     str_column_names = [name for name in df.columns if pd.api.types.is_string_dtype(df[name])]
     return str_column_names
+
 
 def pre_process(raw_datafile: str, cleaned_datafile: str):
     """
@@ -60,11 +64,11 @@ def pre_process(raw_datafile: str, cleaned_datafile: str):
         logging.info(f'Writing {cleaned_datafile}')
     df.to_csv(cleaned_datafile, index=False, na_rep='null')
 
-
-def main():
+@hydra.main(version_base=None, config_path=".", config_name="params.yaml")
+def main(params: DictConfig) -> None:
     logging.info(f'Working directory is {getcwd()}')
-    raw_datafile = '../data/census.csv'
-    cleaned_datafile = '../data/census_cleaned.csv'
+    raw_datafile = params['raw_data']
+    cleaned_datafile = params['cleaned_data']
     pre_process(raw_datafile, cleaned_datafile)
 
 

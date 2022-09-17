@@ -1,12 +1,14 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import pandas as pd
-# import logging
 from train import predict_proba
+import os
+import hydra
+from hydra.core.global_hydra import GlobalHydra
 
-# logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(message)s")
-# logger = logging.getLogger()
-
+if not GlobalHydra().is_initialized():
+    hydra.initialize_config_dir(config_dir=os.getcwd(), version_base='1.1')
+params = hydra.compose(config_name='params.yaml')
 app = FastAPI()
 
 
@@ -54,16 +56,14 @@ async def perform_inference(sample: Sample) -> dict[str, float]:
     to the classe >50K, a real number between 0 and 1.
     :rtype: dict[str, float]
     """
+    saved_model = params['save_model']
     sample = dict(sample)
     # Some field names defined in the BaseModel have underscores, but the corresponding column names (in the dataset)
     # have hyphens instead, therefore replace underscores with hyphens in the column names.
     sample = {key.replace('_', '-') if type(key) == str else key: value for key, value in sample.items()}
-    # logging.info(f'Dict is\n{sample}')
     sample_df = pd.DataFrame(sample, index=[0])
-    # logging.info(f'Dataframe is\n{sample_df}')
-    y_pred = predict_proba(sample_df)[0][1]
+    y_pred = predict_proba(saved_model, sample_df)[0][1]
     result = {'predicted_probability >50K': y_pred}
-    # logging.info(f'result is\n{result}')
     return result
 
 

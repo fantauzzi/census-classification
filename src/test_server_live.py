@@ -1,6 +1,13 @@
 import requests
+import os
+import hydra
+from hydra.core.global_hydra import GlobalHydra
 
-url = 'https://fanta-census-classification.herokuapp.com/'
+if not GlobalHydra().is_initialized():
+    hydra.initialize_config_dir(config_dir=os.getcwd(), version_base='1.1')
+
+params = hydra.compose(config_name='params.yaml')
+url = params['unit-testing']['live_url']
 
 
 def test_home():

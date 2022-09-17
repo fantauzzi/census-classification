@@ -1,4 +1,7 @@
 import pytest
+import os
+import hydra
+from hydra.core.global_hydra import GlobalHydra
 from catboost import CatBoostClassifier, Pool
 from pathlib import Path
 from pandas import read_csv, notnull
@@ -6,10 +9,15 @@ from numpy import ndarray
 from census_preprocess import str_columns, pre_process
 from train import train_and_save, predict_proba, eval_model
 
-raw_datafile = '../data/census.csv'
-test_cleaned_datafile = '../data/test_census_cleaned.csv'
-test_saved_model = '../model/test_trained_model.bin'
-categorical_idx = [1, 3, 4, 5, 6, 7, 8, 9, 13]
+if not GlobalHydra().is_initialized():
+    hydra.initialize_config_dir(config_dir=os.getcwd(), version_base='1.1')
+params = hydra.compose(config_name='params.yaml')
+raw_datafile = params['raw_data']
+test_cleaned_datafile = params['unit-testing']['test_cleaned_data']
+test_saved_model = params['unit-testing']['test_save_model']
+categorical_idx = params['model']['categorical_idx']
+classifier_params = dict(params['catboost_classifier'])
+cv_params = dict(params['catboost_cv'])
 
 
 @pytest.fixture(scope='session')
@@ -46,14 +54,16 @@ def test_train_and_save(setup):
     pool = Pool(data=X, label=y, cat_features=categorical_idx)
     model = train_and_save(train_val_pool=pool,
                            filename=test_saved_model,
-                           file_format='cbm')
+                           file_format='cbm',
+                           classifier_params=classifier_params,
+                           cv_params=cv_params)
     assert type(model) == CatBoostClassifier, 'Trained model must be of type CatBoostClassifier'
     assert Path(test_saved_model).exists(), 'After training the trained model should be written in a file'
 
 
 def test_predict_proba(setup):
     X, _ = setup
-    res = predict_proba(X)
+    res = predict_proba(test_saved_model, X)
     assert len(res) == len(
         X), 'The number of items in the inference should be the same as the number of samples in the dataset'
     assert type(res) == ndarray, 'The inference should be an numpy array'

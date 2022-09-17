@@ -1,12 +1,17 @@
 from fastapi.testclient import TestClient
 import pytest
 from pathlib import Path
-from server import app, Sample
+from server import app
+import os
+import hydra
+from hydra.core.global_hydra import GlobalHydra
 
-raw_datafile = '../data/census.csv'
-cleaned_datafile = '../data/census_cleaned.csv'
-saved_model = '../model/trained_model.bin'
-categorical_idx = [1, 3, 4, 5, 6, 7, 8, 9, 13]
+if not GlobalHydra().is_initialized():
+    hydra.initialize_config_dir(config_dir=os.getcwd(), version_base='1.1')
+
+params = hydra.compose(config_name='params.yaml')
+saved_model = params['save_model']
+categorical_idx = params['model']['categorical_idx']
 
 
 @pytest.fixture(scope='session')

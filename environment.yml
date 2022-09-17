@@ -15,7 +15,7 @@ dependencies:
   - scikit-learn=1.1.1
   - flake8=4.0.1
   - requests=2.28.1
-  - hydra-core=1.2
+  - hydra-core=1.2.0
   - pip:
     - fastapi==0.83.0
     - pydantic==1.10.2

@@ -1,4 +1,3 @@
-logging: info
 raw_data: '../data/census.csv'
 cleaned_data: '../data/census_cleaned.csv'
 save_model: '../model/trained_model.bin'
