@@ -37,7 +37,6 @@ def setup():
     yield X, y
 
     # Teardown after all testing is done
-    print('Tearing down!')
     Path(test_cleaned_datafile).unlink(missing_ok=True)
     Path(test_saved_model).unlink(missing_ok=True)
 

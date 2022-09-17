@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import pandas as pd
-import logging
+# import logging
 from train import predict_proba
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(message)s")
-logger = logging.getLogger()
+# logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(message)s")
+# logger = logging.getLogger()
 
 app = FastAPI()
 
@@ -63,7 +63,7 @@ async def perform_inference(sample: Sample) -> dict[str, float]:
     # logging.info(f'Dataframe is\n{sample_df}')
     y_pred = predict_proba(sample_df)[0][1]
     result = {'predicted_probability >50K': y_pred}
-    logging.info(f'result is\n{result}')
+    # logging.info(f'result is\n{result}')
     return result
 
 
