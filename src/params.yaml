@@ -1,0 +1,29 @@
+logging: info
+raw_data: '../data/census.csv'
+cleaned_data: '../data/census_cleaned.csv'
+save_model: '../model/trained_model.bin'
+save_model_format: 'cbm'
+seed: 42
+slice: 'education'
+unit-testing:
+     test_cleaned_data: '../data/test_census_cleaned.csv'
+     test_save_model: '../model/test_trained_model.bin'
+     test_save_model_format: 'cbm'
+     live_url: 'https://fanta-census-classification.herokuapp.com/'
+model:
+     predict: 'salary'
+     categorical_idx: [1, 3, 4, 5, 6, 7, 8, 9, 13]
+     metrics: ['Logloss', 'AUC', 'F1', 'Recall', 'Precision', 'Accuracy']
+catboost_classifier:
+     iterations: 50
+     random_seed: 42
+     learning_rate: .5
+     # logging_level: 'Silent'
+     verbose: True
+catboost_cv:
+     fold_count: 5
+     partition_random_seed: 42
+     verbose: True
+     stratified: True
+
+

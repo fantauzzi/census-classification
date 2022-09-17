@@ -2,7 +2,6 @@ from fastapi.testclient import TestClient
 import pytest
 from pathlib import Path
 from server import app, Sample
-from train import eval_model
 
 raw_datafile = '../data/census.csv'
 cleaned_datafile = '../data/census_cleaned.csv'

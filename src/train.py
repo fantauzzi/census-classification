@@ -5,19 +5,19 @@ import numpy as np
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 from catboost import Pool, cv, CatBoostClassifier
+import hydra
+from omegaconf import DictConfig, OmegaConf
 from census_preprocess import pre_process, str_columns
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(message)s")
 logger = logging.getLogger()
 
-seed = 42
-raw_datafile = '../data/census.csv'
-cleaned_datafile = '../data/census_cleaned.csv'
-saved_model = '../model/trained_model.bin'
-categorical_idx = [1, 3, 4, 5, 6, 7, 8, 9, 13]
 
-
-def train_and_save(train_val_pool: Pool, filename: str, file_format: str = 'cbm') -> CatBoostClassifier:
+def train_and_save(train_val_pool: Pool,
+                   filename: str,
+                   file_format: str,
+                   classifier_params: dict,
+                   cv_params: dict) -> CatBoostClassifier:
     """
     Train and select a classification model based on cross-validation, save and return it. Before saving, the
     selected model is re-trained on the whole training and validation dataset.
@@ -32,30 +32,27 @@ def train_and_save(train_val_pool: Pool, filename: str, file_format: str = 'cbm'
     :return: The trained classification model, the same that went into the save file.
     :rtype: catboost.CatBoostClassifier
     """
-    params = {}
+    """params = {}
     params['loss_function'] = 'Logloss'
     params['iterations'] = 50
     # params['custom_loss'] = 'AUC'
     params['random_seed'] = seed
-    params['learning_rate'] = 0.5
+    params['learning_rate'] = 0.5"""
 
     logging.info(f'Training with cross-validation')
-    cv_data = cv(params=params,
+    classifier_params['loss_function'] = 'Logloss'
+    cv_data = cv(params=classifier_params,
                  pool=train_val_pool,
-                 fold_count=5,
-                 partition_random_seed=seed,
-                 stratified=True,
-                 verbose=True)
+                 **cv_params)
     best_iter = np.argmin(cv_data['test-Logloss-mean'])
     best_loss = cv_data.loc[best_iter, 'test-Logloss-mean']
     logging.info(f'Best iteration among all folds was #{best_iter} with test loss {best_loss}.')
     logging.info(f'Re-training the model for {best_iter + 1} iterations on the whole training/validation dataset')
 
-    params['iterations'] = best_iter + 1
-    best_model = CatBoostClassifier(verbose=True,
-                                    **params)
-    best_model.fit(train_val_pool,
-                   verbose=True)
+    classifier_params['iterations'] = best_iter + 1
+    best_model = CatBoostClassifier(**classifier_params)  #verbose=True,
+    best_model.fit(train_val_pool)
+    # verbose=True)
 
     best_model.save_model(fname=filename,
                           format=file_format,
@@ -69,7 +66,6 @@ def eval_model(file_name: str, test_pool: Pool, y_test: list, metrics: list[str]
     model = CatBoostClassifier()
     model.load_model(file_name)
     y_prob = model.predict_proba(test_pool)
-    # test_loss = log_loss(y_test, y_prob)
     metrics = model.eval_metrics(data=test_pool,
                                  metrics=metrics,
                                  ntree_start=model.tree_count_ - 1)
@@ -82,11 +78,12 @@ def eval_model(file_name: str, test_pool: Pool, y_test: list, metrics: list[str]
 def validate_given_slice(model: CatBoostClassifier,
                          X_test: pd.DataFrame,
                          y_test: list,
+                         cat_features: list[int],
                          var_name: str, category: str,
                          metrics: list[str]) -> dict[str, float]:
     X_slice = X_test[X_test[var_name] == category]
     y_slice = y_test[X_test[var_name] == category]
-    test_pool = Pool(data=X_slice, label=y_slice, cat_features=categorical_idx)
+    test_pool = Pool(data=X_slice, label=y_slice, cat_features=cat_features)
     logging.info(
         f'Slice for category "{category}" contains {len(X_slice)} samples ({sum(y_slice)} positive)')
     slice_metrics = model.eval_metrics(data=test_pool,
@@ -96,8 +93,12 @@ def validate_given_slice(model: CatBoostClassifier,
     return slice_metrics
 
 
-def validate_model_slice(file_name: str, X_test: pd.DataFrame, y_test: list, metrics: list[str], var_name: str) -> \
-        dict[str, dict[str, float]]:
+def validate_model_slice(file_name: str,
+                         X_test: pd.DataFrame,
+                         y_test: list,
+                         cat_features: list[int],
+                         metrics: list[str],
+                         var_name: str) -> dict[str, dict[str, float]]:
     # Only implemented for categorical variables
     assert pd.api.types.is_string_dtype(X_test[var_name]), 'Variable for slice testing must be categorical (string)'
 
@@ -110,17 +111,12 @@ def validate_model_slice(file_name: str, X_test: pd.DataFrame, y_test: list, met
     for category in categories:
         logging.info(f'   "{category}"')
 
-    # TODO dead code, eventually remove if not used
-    # X_slices = {category: X_test[X_test[var_name] == category] for category in categories}
-    # y_slices = {category: y_test[X_test[var_name] == category] for category in categories}
-    # test_Pools = {category: Pool(data=X_slices[category], label=y_slices[category], cat_features=categorical_idx)
-    #              for category in categories}
-
     slices_metrics = {}
     for category in categories:
         slices_metrics[category] = validate_given_slice(model=model,
                                                         X_test=X_test,
                                                         y_test=y_test,
+                                                        cat_features=cat_features,
                                                         var_name=var_name,
                                                         category=category,
                                                         metrics=metrics)
@@ -128,14 +124,14 @@ def validate_model_slice(file_name: str, X_test: pd.DataFrame, y_test: list, met
     return slices_metrics
 
 
-def predict_proba(df: pd.DataFrame) -> np.ndarray:
+def predict_proba(model_filename: str, df: pd.DataFrame) -> np.ndarray:
     logging.info(f'Working directory for predic_proba() is {getcwd()}')
     logging.info(
         f'Making prediction for batch of {len(df)} samples.')
     if predict_proba.model is None:
-        logging.info(f'Loading trained model {saved_model}')
+        logging.info(f'Loading trained model {model_filename}')
         predict_proba.model = CatBoostClassifier()
-        predict_proba.model.load_model(saved_model)
+        predict_proba.model.load_model(model_filename)
     y_prob = predict_proba.model.predict_proba(df, verbose=True)
     return y_prob
 
@@ -143,8 +139,18 @@ def predict_proba(df: pd.DataFrame) -> np.ndarray:
 predict_proba.model = None
 
 
-def main():
+@hydra.main(version_base=None, config_path=".", config_name="params.yaml")
+def main(params: DictConfig):
     logging.info(f'Working directory is {getcwd()}')
+
+    seed = 42
+    raw_datafile = params['raw_data']
+    cleaned_datafile = params['cleaned_data']
+    saved_model = params['save_model']
+    categorical_idx = params['model']['categorical_idx']
+    classifier_params = params['catboost_classifier']
+    cv_params = params['catboost_cv']
+
     if not Path(cleaned_datafile).exists():
         logging.info(
             f'Pre-processed dataset {cleaned_datafile} not found. Going to make it now from raw dataset {raw_datafile}')
@@ -173,7 +179,9 @@ def main():
     # Train and cross-validate the model, and save it in CatBoost binary format
     model = train_and_save(train_val_pool=train_val_pool,
                            filename=saved_model,
-                           file_format='cbm')
+                           file_format='cbm',
+                           classifier_params=dict(classifier_params),
+                           cv_params=dict(cv_params))
 
     # Test the model
     metrics_name = ['Logloss', 'AUC', 'F1', 'Recall', 'Precision', 'Accuracy']
@@ -183,6 +191,7 @@ def main():
     validate_model_slice(file_name=saved_model,
                          X_test=X_test,
                          y_test=y_test,
+                         cat_features=categorical_idx,
                          metrics=metrics_name,
                          var_name='education')
 
