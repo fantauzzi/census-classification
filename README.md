@@ -4,7 +4,7 @@ Clone the repository
 
 `git clone https://github.com/fantauzzi/census-classification.git`
 
-Ensure the dependencies are installed. The repo comes with a `requirements.txt` for virtualenv
+Ensure all dependencies are installed. The repo comes with a `requirements.txt` for virtualenv
 and a `environment.yml` for conda, listing dependencies.
 
 ## Running
@@ -12,7 +12,7 @@ and a `environment.yml` for conda, listing dependencies.
 The project runs with Python 3.10. It has been tested under Ubuntu 20.04.5
 
 To run all scripts first cd into the `src` directory, except for `server.sh` which should be run
-from the root of the project. Parameter values are in `src/params.yaml`
+from the root of the project. Parameter values are in [`src/params.yaml`](https://github.com/fantauzzi/census-classification/blob/main/src/params.yaml)
 
 To run all tests:
 
@@ -24,7 +24,7 @@ To see log prints that are sent to the console:
 
 To view the EDA run jupyter or jupyter-lab and open `src/eda.ipynb`
 
-The dataset pre-processing reads the file specified by parameter `raw_data` and writes its output
+Dataset pre-processing reads the file specified by parameter `raw_data` and writes its output
 into the file specified by `cleaned_data`. To run it:
 
 `pyton census_preprocess.py`
@@ -33,13 +33,13 @@ Run training, cross-validation, model testing and testing of a slice with
 
 `python train.py`
 
-Parameters used for training and cross-validation are in `src/params.yam` under sections
-`catboost_classifier` and `catboost_cv` See CatBoost documentation for the parameters of
+Parameters used for training and cross-validation are in `src/params.yaml` under sections
+`catboost_classifier` and `catboost_cv`. See CatBoost documentation for the parameters of
 [CatBoost.cv()](https://catboost.ai/en/docs/concepts/python-reference_cv); `catboost_classifier`
 parameters are passed to `cv()` into its parameter `params`, while `catboost_cv` parameters are passed
 to `cv()` as named parameters. See in the
-[source code](https://github.com/fantauzzi/census-classification/blob/c48386e80898bd2eb125695bc2439ab93afdba36/src/train.py#L44)
-.
+[source code](https://github.com/fantauzzi/census-classification/blob/c48386e80898bd2eb125695bc2439ab93afdba36/src/train.py#L44).
+
 
 ## Serving
 
@@ -77,7 +77,7 @@ curl -X 'POST' \
 
 ## Rubric
 
-Here below a traceability matrix that reports how the project has met each of the requirements,
+Find in this section a traceability matrix that reports how the project meets each of the requirements,
 as set forth in Udacity's [project rubric](https://review.udacity.com/#!/rubrics/4875/view).
 
 ### Set up git with GitHub Actions
@@ -103,7 +103,7 @@ cross-validation. The test set is then used to test the trained model and asses 
 - *determine the classification metrics* in
   function [eval_model()](https://github.com/fantauzzi/census-classification/blob/c48386e80898bd2eb125695bc2439ab93afdba36/src/train.py#L63)
 
-The *script that takes in the data, process it, trains the model and saves it and the encoder* is
+The *script that takes in the data, processes it, trains the model and saves it and the encoder* is
 [`src/train.py`](https://github.com/fantauzzi/census-classification/blob/main/src/train.py)
 
 **Note**: the library used to make and optimize the model, CatBoost, does the categorical encoding
@@ -132,7 +132,7 @@ the variable can assume.
 
 The script [`src/train.py`](https://github.com/fantauzzi/census-classification/blob/main/src/train.py)
 calls `validate_model_slice()` for the `education` variable. See the output in
-`screenshots/slice_output.txt`, starting at line #323.
+[`screenshots/slice_output.txt`](https://github.com/fantauzzi/census-classification/blob/fa6a87a99028f5956f0007d7bf76e1cf04685e1f/screenshots/slice_output.txt#L323), starting at line #323.
 
 ### Write a model card
 
@@ -182,7 +182,7 @@ Screenshot of the Heroku app configuration with CD enabled.
 
 ![CD](screenshots/continuous_deployment.png "App configurtion with CD enabled")
 
-Screenshot of the brwoser receiving the result of a GET to the root domain.
+Screenshot of a browser receiving the result of a GET to the root domain.
 
 ![GET](screenshots/live_get.png "Result of the GET / on a browser")
 
