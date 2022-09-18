@@ -78,9 +78,10 @@ def test_eval_model(setup):
     if not Path(test_saved_model).exists():
         train_and_save(train_val_pool=pool,
                        filename=test_saved_model,
-
+                       classifier_params=classifier_params,
+                       cv_params=cv_params,
                        file_format='cbm')
-    metrics_value = eval_model(test_saved_model, pool, y, metrics_name)
+    metrics_value = eval_model(test_saved_model, pool, metrics_name)
     assert type(metrics_value) == dict, 'Metrics should be returned in a dictionary'
     keys = metrics_value.keys()
     assert {*keys} == {*metrics_name}, 'Returned metrics should be the requested CatBoost metrics'

@@ -1,4 +1,3 @@
-import pytest
 from pathlib import Path
 import pandas as pd
 from census_preprocess import str_columns, pre_process

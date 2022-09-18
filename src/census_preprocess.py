@@ -3,7 +3,7 @@ import logging
 import pandas as pd
 from pathlib import Path
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(message)s")
 logger = logging.getLogger()
@@ -63,6 +63,7 @@ def pre_process(raw_datafile: str, cleaned_datafile: str):
     else:
         logging.info(f'Writing {cleaned_datafile}')
     df.to_csv(cleaned_datafile, index=False, na_rep='null')
+
 
 @hydra.main(version_base=None, config_path=".", config_name="params.yaml")
 def main(params: DictConfig) -> None:

@@ -6,7 +6,7 @@ from pathlib import Path
 from sklearn.model_selection import train_test_split
 from catboost import Pool, cv, CatBoostClassifier
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 from census_preprocess import pre_process, str_columns
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(message)s")
@@ -32,14 +32,8 @@ def train_and_save(train_val_pool: Pool,
     :return: The trained classification model, the same that went into the save file.
     :rtype: catboost.CatBoostClassifier
     """
-    """params = {}
-    params['loss_function'] = 'Logloss'
-    params['iterations'] = 50
-    # params['custom_loss'] = 'AUC'
-    params['random_seed'] = seed
-    params['learning_rate'] = 0.5"""
 
-    logging.info(f'Training with cross-validation')
+    logging.info('Training with cross-validation.')
     classifier_params['loss_function'] = 'Logloss'
     cv_data = cv(params=classifier_params,
                  pool=train_val_pool,
@@ -60,12 +54,10 @@ def train_and_save(train_val_pool: Pool,
     return best_model
 
 
-def eval_model(file_name: str, test_pool: Pool, y_test: list, metrics: list[str]) -> dict[str, float]:
-    logging.info(
-        f'Evaluating model saved in {file_name} against a test set with {len(y_test)} samples ({sum(y_test)} positive).')
+def eval_model(file_name: str, test_pool: Pool, metrics: list[str]) -> dict[str, float]:
+    logging.info(f'Evaluating model saved in {file_name}')
     model = CatBoostClassifier()
     model.load_model(file_name)
-    y_prob = model.predict_proba(test_pool)
     metrics = model.eval_metrics(data=test_pool,
                                  metrics=metrics,
                                  ntree_start=model.tree_count_ - 1)
@@ -171,22 +163,23 @@ def main(params: DictConfig) -> None:
     y = df['salary']
     X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=.8, random_state=seed, stratify=y)
     logging.info(
-        f'Got {len(X_train)} samples in the training set ({sum(y_train)} positive) and {len(X_test)} in the test set ({sum(y_test)} positive).')
+        f'Got {len(X_train)} samples in the training set ({sum(y_train)} positive) and {len(X_test)} \
+        in the test set ({sum(y_test)} positive).')
 
     # Make a Pool for CatBoost out of the training set
     train_val_pool = Pool(data=X_train, label=y_train, cat_features=categorical_idx)
 
     # Train and cross-validate the model, and save it in CatBoost binary format
-    model = train_and_save(train_val_pool=train_val_pool,
-                           filename=saved_model,
-                           file_format='cbm',
-                           classifier_params=dict(classifier_params),
-                           cv_params=dict(cv_params))
+    train_and_save(train_val_pool=train_val_pool,
+                   filename=saved_model,
+                   file_format='cbm',
+                   classifier_params=dict(classifier_params),
+                   cv_params=dict(cv_params))
 
     # Test the model
     metrics_name = ['Logloss', 'AUC', 'F1', 'Recall', 'Precision', 'Accuracy']
     test_pool = Pool(data=X_test, label=y_test, cat_features=categorical_idx)
-    metrics_value = eval_model(saved_model, test_pool, y_test, metrics_name)
+    eval_model(saved_model, test_pool, metrics_name)
 
     validate_model_slice(file_name=saved_model,
                          X_test=X_test,
