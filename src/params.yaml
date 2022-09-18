@@ -14,9 +14,9 @@ model:
      categorical_idx: [1, 3, 4, 5, 6, 7, 8, 9, 13]
      metrics: ['Logloss', 'AUC', 'F1', 'Recall', 'Precision', 'Accuracy']
 catboost_classifier:
-     iterations: 1000
+     iterations: 50
      random_seed: 42
-     learning_rate: .03
+     learning_rate: .5
      # logging_level: 'Silent'
      verbose: True
 catboost_cv:
