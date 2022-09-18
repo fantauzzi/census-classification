@@ -44,8 +44,6 @@ async def home() -> dict[str, str]:
     return {'message': 'Inference for census classification'}
 
 
-# age	workclass	fnlgt	education	education-num	marital-status	occupation	relationship	race	sex	capital-gain	capital-loss	hours-per-week	native-country	salary
-
 @app.post('/inference/')
 async def perform_inference(sample: Sample) -> dict[str, float]:
     """
@@ -71,7 +69,7 @@ async def perform_inference(sample: Sample) -> dict[str, float]:
 One sample POST request, kept here for convenience:
 
 curl -X 'POST' \
-  'http://127.0.0.1:8000/inference' \
+  'http://127.0.0.1:8000/inference/' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{

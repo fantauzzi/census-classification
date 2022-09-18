@@ -1,75 +1,196 @@
-Working in a command line environment is recommended for ease of use with git and dvc. If on Windows, WSL1 or 2 is recommended.
+## Installation
 
-# Environment Set up
-* Download and install conda if you don’t have it already.
-    * Use the supplied requirements file to create a new environment, or
-    * conda create -n [envname] "python=3.8" scikit-learn dvc pandas numpy pytest jupyter jupyterlab fastapi uvicorn -c conda-forge
-    * Install git either through conda (“conda install git”) or through your CLI, e.g. sudo apt-get git.
+Clone the repository
 
-## Repositories
+`git clone https://github.com/fantauzzi/census-classification.git`
 
-* Create a directory for the project and initialize Git and DVC.
-   * As you work on the code, continually commit changes. Trained models you want to keep must be committed to DVC.
-* Connect your local Git repository to GitHub.
+Ensure the dependencies are installed. The repo comes with a `requirements.txt` for virtualenv
+and a `environment.yml` for conda, listing dependencies.
 
-## Set up S3
+## Running
 
-* In your CLI environment install the<a href="https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html" target="_blank"> AWS CLI tool</a>.
-* In the navigation bar in the Udacity classroom select **Open AWS Gateway** and then click **Open AWS Console**. You will not need the AWS Access Key ID or Secret Access Key provided here.
-* From the Services drop down select S3 and then click Create bucket.
-* Give your bucket a name, the rest of the options can remain at their default.
+The project runs with Python 3.10. It has been tested under Ubuntu 20.04.5
 
-To use your new S3 bucket from the AWS CLI you will need to create an IAM user with the appropriate permissions. The full instructions can be found <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html#id_users_create_console" target="_blank">here</a>, what follows is a paraphrasing:
+To run all scripts first cd into the `src` directory, except for `server.sh` which should be run
+from the root of the project. Parameter values are in `src/params.yaml`
 
-* Sign in to the IAM console <a href="https://console.aws.amazon.com/iam/" target="_blank">here</a> or from the Services drop down on the upper navigation bar.
-* In the left navigation bar select **Users**, then choose **Add user**.
-* Give the user a name and select **Programmatic access**.
-* In the permissions selector, search for S3 and give it **AmazonS3FullAccess**
-* Tags are optional and can be skipped.
-* After reviewing your choices, click create user. 
-* Configure your AWS CLI to use the Access key ID and Secret Access key.
+To run all tests:
 
-## GitHub Actions
+`pytest -v`
 
-* Setup GitHub Actions on your repository. You can use one of the pre-made GitHub Actions if at a minimum it runs pytest and flake8 on push and requires both to pass without error.
-   * Make sure you set up the GitHub Action to have the same version of Python as you used in development.
-* Add your <a href="https://github.com/marketplace/actions/configure-aws-credentials-action-for-github-actions" target="_blank">AWS credentials to the Action</a>.
-* Set up <a href="https://github.com/iterative/setup-dvc" target="_blank">DVC in the action</a> and specify a command to `dvc pull`.
+To see log prints that are sent to the console:
 
-## Data
+`pytest -v -s`
 
-* Download census.csv from the data folder in the starter repository.
-   * Information on the dataset can be found <a href="https://archive.ics.uci.edu/ml/datasets/census+income" target="_blank">here</a>.
-* Create a remote DVC remote pointing to your S3 bucket and commit the data.
-* This data is messy, try to open it in pandas and see what you get.
-* To clean it, use your favorite text editor to remove all spaces.
-* Commit this modified data to DVC under a new name (we often want to keep the raw data untouched but then can keep updating the cooked version).
+To view the EDA run jupyter or jupyter-lab and open `src/eda.ipynb`
 
-## Model
+The dataset pre-processing reads the file specified by parameter `raw_data` and writes its output
+into the file specified by `cleaned_data`. To run it:
 
-* Using the starter code, write a machine learning model that trains on the clean data and saves the model. Complete any function that has been started.
-* Write unit tests for at least 3 functions in the model code.
-* Write a function that outputs the performance of the model on slices of the data.
-   * Suggestion: for simplicity, the function can just output the performance on slices of just the categorical features.
-* Write a model card using the provided template.
+`pyton census_preprocess.py`
 
-## API Creation
+Run training, cross-validation, model testing and testing of a slice with
 
-* Create a RESTful API using FastAPI this must implement:
-   * GET on the root giving a welcome message.
-   * POST that does model inference.
-   * Type hinting must be used.
-   * Use a Pydantic model to ingest the body from POST. This model should contain an example.
-    * Hint: the data has names with hyphens and Python does not allow those as variable names. Do not modify the column names in the csv and instead use the functionality of FastAPI/Pydantic/etc to deal with this.
-* Write 3 unit tests to test the API (one for the GET and two for POST, one that tests each prediction).
+`python train.py`
 
-## API Deployment
+Parameters used for training and cross-validation are in `src/params.yam` under sections
+`catboost_classifier` and `catboost_cv` See CatBoost documentation for the parameters of
+[CatBoost.cv()](https://catboost.ai/en/docs/concepts/python-reference_cv); `catboost_classifier`
+parameters are passed to `cv()` into its parameter `params`, while `catboost_cv` parameters are passed
+to `cv()` as named parameters. See in the
+[source code](https://github.com/fantauzzi/census-classification/blob/c48386e80898bd2eb125695bc2439ab93afdba36/src/train.py#L44)
+.
 
-* Create a free Heroku account (for the next steps you can either use the web GUI or download the Heroku CLI).
-* Create a new app and have it deployed from your GitHub repository.
-   * Enable automatic deployments that only deploy if your continuous integration passes.
-   * Hint: think about how paths will differ in your local environment vs. on Heroku.
-   * Hint: development in Python is fast! But how fast you can iterate slows down if you rely on your CI/CD to fail before fixing an issue. I like to run flake8 locally before I commit changes.
-* Set up DVC on Heroku using the instructions contained in the starter directory.
-* Set up access to AWS on Heroku, if using the CLI: `heroku config:set AWS_ACCESS_KEY_ID=xxx AWS_SECRET_ACCESS_KEY=yyy`
-* Write a script that uses the requests module to do one POST on your live API.
+## Serving
+
+From the root directory of the repo run
+
+`. server.sh`
+
+That will start a [uvicorn](https://www.uvicorn.org/) web server. Opening the server home page
+with a browser should show a greeting message. The server implements a REST API that allows to make
+inference with the trained model on a given sample. Here an example of running the POST request for
+inference, assuming the server is on localhost listening to port 8000:
+
+```shell
+curl -X 'POST' \
+  'http://127.0.0.1:8000/inference/' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "age": 39,
+  "workclass": "State-gov",
+  "fnlgt": 77516,
+  "education": "Bachelors",
+  "education_num": "13",
+  "marital_status": "marital-status",
+  "occupation": "Adm-clerical",
+  "relationship": "Not-in-family",
+  "race": "White",
+  "sex": "Male",
+  "capital_gain": 2174,
+  "capital_loss": 0,
+  "hours_per_week": 40,
+  "native_country": "United-States"
+}'
+```
+
+## Rubric
+
+Here below a traceability matrix that reports how the project has met each of the requirements,
+as set forth in Udacity's [project rubric](https://review.udacity.com/#!/rubrics/4875/view).
+
+### Set up git with GitHub Actions
+
+10 tests have been implemented with Pytest. **Note**: to run them in the repo, first cd into `src`.
+
+Link to the GitHub repo showing actions have been run successfully (on the last commit) on
+push to main/master:
+[https://github.com/fantauzzi/census-classification/actions](https://github.com/fantauzzi/census-classification/actions)
+
+### Create a machine learning model
+
+Script `src/train.py` splits the dataset into train and test sets (80% and 20% respectively). The
+train set is used for training, model selection and hyper-parameters tuning using k-fold
+cross-validation. The test set is then used to test the trained model and asses its performance.
+
+- *train, save and load the model and any categorical encoders* in
+  function [train_and_save()](https://github.com/fantauzzi/census-classification/blob/c48386e80898bd2eb125695bc2439ab93afdba36/src/train.py#L16)
+  ;
+- *model inference* in
+  function [predict_proba()](https://github.com/fantauzzi/census-classification/blob/c48386e80898bd2eb125695bc2439ab93afdba36/src/train.py#L127)
+  ;
+- *determine the classification metrics* in
+  function [eval_model()](https://github.com/fantauzzi/census-classification/blob/c48386e80898bd2eb125695bc2439ab93afdba36/src/train.py#L63)
+
+The *script that takes in the data, process it, trains the model and saves it and the encoder* is
+[`src/train.py`](https://github.com/fantauzzi/census-classification/blob/main/src/train.py)
+
+**Note**: the library used to make and optimize the model, CatBoost, does the categorical encoding
+itself, and saves it along with the model. The categorical encoder and the model are saved
+together as one file only
+in [`src/model/trained_model.bin`](https://github.com/fantauzzi/census-classification/blob/main/model/trained_model.bin)
+
+### Write unit tests
+
+Three unit tests to test model building have been implemented,
+
+```
+test_train.py::test_train_and_save PASSED                                [ 80%]
+test_train.py::test_predict_proba PASSED                                 [ 90%]
+test_train.py::test_eval_model PASSED                                    [100%]
+```
+
+### Write a function that computes model metrics on slices of the data
+
+Function [`validate_given_slice()`](https://github.com/fantauzzi/census-classification/blob/c48386e80898bd2eb125695bc2439ab93afdba36/src/train.py#L78)
+computes the peformance metrics when the value of a given feature is held fixed.
+
+Function [`validate_model_slice()`](https://github.com/fantauzzi/census-classification/blob/c48386e80898bd2eb125695bc2439ab93afdba36/src/train.py#L96)
+computes the performance metrics for a given categorical variable, for each of the values (categories)
+the variable can assume.
+
+The script [`src/train.py`](https://github.com/fantauzzi/census-classification/blob/main/src/train.py)
+calls `validate_model_slice()` for the `education` variable. See the output in
+`screenshots/slice_output.txt`, starting at line #323.
+
+### Write a model card
+
+Provided [here](https://github.com/fantauzzi/census-classification/blob/main/model_card.md).
+
+### Create a REST API
+
+The REST API is implemented
+in [`src/server.py`](https://github.com/fantauzzi/census-classification/blob/main/src/server.py)
+
+It implements a GET method on the root domain that returns a greeting message, and a POST method
+with path `/inference/`.
+
+Here below a screenshot of the [example used as source](https://fastapi.tiangolo.com/tutorial/schema-extra-example/)
+to implement a Pydantic model (Python 3.10).
+
+![Example screenshot](screenshots/example.png "Example screenshot")
+
+### Create tests for an API
+
+The three required test cases are implemented in 
+['src/test_server.py'](https://github.com/fantauzzi/census-classification/blob/main/src/test_server.py)
+
+```shell
+> cd  src
+> pytest -v test_server.py
+============================= test session starts ==============================
+platform linux -- Python 3.10.4, pytest-7.1.2, pluggy-1.0.0 -- /home/fanta/.local/miniconda3/envs/python3.10/bin/python
+cachedir: .pytest_cache
+rootdir: /home/fanta/workspace/census-classification/src
+plugins: anyio-3.6.1, hydra-core-1.2.0
+collected 3 items                                                              
+
+test_server.py::test_home PASSED                                         [ 33%]
+test_server.py::test_perform_inference_neg PASSED                        [ 66%]
+test_server.py::test_perform_inference_pos PASSED                        [100%]
+
+============================== 3 passed in 0.76s ===============================
+```
+
+### Deploy an app to Heroku
+
+The app may be available as long as the free tier of Heroku is available at 
+[https://fanta-census-classification.herokuapp.com/](https://fanta-census-classification.herokuapp.com/)
+
+Screenshot of the Heroku app configuration with CD enabled.
+
+![CD](screenshots/continuous_deployment.png "App configurtion with CD enabled")
+
+Screenshot of the brwoser receiving the result of a GET to the root domain.
+
+![GET](screenshots/live_get.png "Result of the GET / on a browser")
+
+### Query live API
+
+The script for unit-testing of the live API implements the required POST. The script outputs 
+the status code and the inference result when run (from the `src` directory) with
+
+`pytest -v -s test_server_live.py`
+
+![POST](screenshots/live_post.png "Output of the script sending a POST to the live server")
